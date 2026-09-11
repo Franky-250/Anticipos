@@ -17,21 +17,28 @@ async def _get(path: str, params: dict | None = None) -> dict:
 
 
 async def _get_all_usuarios() -> list[dict]:
+    if not settings.cronos_api_key:
+        return []
+
     cached = _cache.get("usuarios")
     if cached and time.monotonic() - cached[0] < _CACHE_TTL_SECONDS:
         return cached[1]
 
     usuarios: list[dict] = []
     page = 1
-    while True:
-        data = await _get("/usuarios", {"page": page, "size": 500})
-        usuarios.extend(data["data"])
-        if page >= data["total_pages"]:
-            break
-        page += 1
+    try:
+        while True:
+            data = await _get("/usuarios", {"page": page, "size": 500})
+            usuarios.extend(data["data"])
+            if page >= data["total_pages"]:
+                break
+            page += 1
 
-    _cache["usuarios"] = (time.monotonic(), usuarios)
-    return usuarios
+        _cache["usuarios"] = (time.monotonic(), usuarios)
+        return usuarios
+    except Exception:
+        return []
+
 
 
 async def buscar_empleados(query: str, limite: int = 20) -> list[dict]:
@@ -49,9 +56,16 @@ async def buscar_empleados(query: str, limite: int = 20) -> list[dict]:
     return resultados[:limite]
 
 
-async def listar_directores() -> list[dict]:
+async def listar_autorizadores() -> list[dict]:
     usuarios = await _get_all_usuarios()
-    return [u for u in usuarios if u.get("cargo") and "DIRECTOR" in u["cargo"].upper()]
+    return sorted(
+        usuarios,
+        key=lambda u: u.get("nombre_completo", "").lower()
+    )
+
+
+async def listar_directores() -> list[dict]:
+    return await listar_autorizadores()
 
 
 async def listar_centros() -> list[dict]:
@@ -64,3 +78,14 @@ async def listar_centros() -> list[dict]:
         {"codigo": codigo, "nombre": nombre}
         for codigo, nombre in sorted(centros.items(), key=lambda item: item[1])
     ]
+
+
+async def listar_cargos() -> list[str]:
+    usuarios = await _get_all_usuarios()
+    cargos = {
+        u.get("cargo", "").strip()
+        for u in usuarios
+        if u.get("cargo") and u.get("cargo").strip()
+    }
+    return sorted(list(cargos))
+

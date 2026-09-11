@@ -17,7 +17,9 @@ async def buscar_empleados(q: str = Query(min_length=2)):
         {
             "cedula": e["doc_identidad"],
             "nombre": e["nombre_completo"],
-            "cargo": e.get("cargo"),
+            "cargo": e.get("cargo") or "",
+            "email": e.get("correo_corporativo") or e.get("correo") or e.get("email") or "",
+            "empresa": e.get("empresa") or e.get("sociedad") or e.get("compania") or "",
             "centro_codigo": e.get("cod_centro"),
             "centro_nombre": e.get("centro"),
         }
@@ -25,17 +27,29 @@ async def buscar_empleados(q: str = Query(min_length=2)):
     ]
 
 
-@router.get("/directores")
-async def obtener_directores():
+@router.get("/autorizadores")
+async def obtener_autorizadores():
     try:
-        directores = await cronos_client.listar_directores()
+        usuarios = await cronos_client.listar_autorizadores()
     except HTTPStatusError:
-        raise HTTPException(status_code=502, detail="No se pudo consultar la maestra de directores")
+        raise HTTPException(status_code=502, detail="No se pudo consultar la lista de personas autorizadoras")
 
     return [
-        {"nombre": d["nombre_completo"], "cargo": d.get("cargo")}
-        for d in directores
+        {
+            "nombre": d["nombre_completo"],
+            "cargo": d.get("cargo") or "",
+            "email": d.get("correo_corporativo") or d.get("correo") or d.get("email") or "",
+            "cedula": d.get("doc_identidad") or "",
+        }
+        for d in usuarios
     ]
+
+
+
+
+@router.get("/directores")
+async def obtener_directores():
+    return await obtener_autorizadores()
 
 
 @router.get("/centros")
@@ -44,3 +58,12 @@ async def obtener_centros():
         return await cronos_client.listar_centros()
     except HTTPStatusError:
         raise HTTPException(status_code=502, detail="No se pudo consultar la maestra de centros de costo")
+
+
+@router.get("/cargos")
+async def obtener_cargos():
+    try:
+        return await cronos_client.listar_cargos()
+    except HTTPStatusError:
+        raise HTTPException(status_code=502, detail="No se pudo consultar la maestra de cargos")
+
