@@ -79,11 +79,11 @@ python -m venv .venv
 ./.venv/Scripts/activate        # Windows
 pip install -r requirements.txt
 cp .env.example .env             # y completa CRONOS_API_KEY
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8037
 ```
 
-La API queda disponible en `http://localhost:8000` (documentación interactiva en
-`http://localhost:8000/docs`).
+La API queda disponible en `http://localhost:8037` (documentación interactiva en
+`http://localhost:8037/docs`).
 
 ### Frontend
 

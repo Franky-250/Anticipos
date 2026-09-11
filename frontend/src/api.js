@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000/api";
+const API_URL = "http://localhost:8037/api";
 
 export async function crearAnticipo(datos) {
   const res = await fetch(`${API_URL}/anticipos`, {
