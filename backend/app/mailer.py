@@ -657,3 +657,223 @@ async def notificar_rechazo(
 </html>
 """
     return await enviar_correo(destinatario, asunto, html)
+
+
+# ====================================================================
+# 6. NOTIFICACIONES DE CONTROL DE TOPE Y SOBRETOPE
+# ====================================================================
+
+async def notificar_solicitud_sobretope(
+    destinatario: str,
+    autorizador_nombre: str,
+    anticipo_id: int,
+    solicitante_nombre: str,
+    solicitante_cargo: str,
+    solicitante_cedula: str,
+    centro_costo: str,
+    obra: str,
+    valor: float,
+    monto_tope: float,
+    motivo_tipo: str,
+    motivo_detalle: str,
+    justificacion: str,
+) -> bool:
+    """
+    Notifica a la persona designada para autorizar una solicitud de anticipo que supera el tope estándar.
+    """
+    url_revision = f"{APP_FRONTEND_URL}/aprobaciones"
+    asunto = f"⚠️ Requiere Pre-Autorización: Anticipo #{anticipo_id} SUPERÓ TOPE ({_formatear_moneda(valor)} vs Tope {_formatear_moneda(monto_tope)})"
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }}
+        .wrapper {{ width: 100%; background-color: #f8fafc; padding: 30px 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; border: 1.5px solid #fde68a; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+        .header {{ background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 25px 30px; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 20px; font-weight: 700; }}
+        .badge-tope {{ display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-top: 8px; }}
+        .body {{ padding: 30px; color: #334155; }}
+        .banner-alerta {{ background: #fffbeb; border: 1.5px solid #fef3c7; border-radius: 10px; padding: 16px; margin: 18px 0; font-size: 14px; color: #92400e; }}
+        .card-monto {{ background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }}
+        .card-monto .valor {{ font-size: 28px; font-weight: 800; color: #b45309; }}
+        .card-monto .comparativa {{ font-size: 13px; color: #64748b; margin-top: 4px; }}
+        .detalles-tabla {{ width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }}
+        .detalles-tabla td {{ padding: 8px 0; border-bottom: 1px solid #f1f5f9; }}
+        .detalles-tabla td.label {{ color: #64748b; width: 40%; }}
+        .detalles-tabla td.val {{ font-weight: 600; color: #0f172a; width: 60%; }}
+        .btn {{ display: inline-block; background: #d97706; color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 700; font-size: 15px; margin-top: 15px; text-align: center; }}
+        .footer {{ text-align: center; font-size: 12px; color: #94a3b8; padding: 20px; border-top: 1px solid #f1f5f9; }}
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>Solicitud de Anticipo Superó Tope Máximo</h1>
+                <div class="badge-tope">⚠️ Requiere tu Autorización Previa de Sobretope</div>
+            </div>
+            <div class="body">
+                <p>Estimado(a) <strong>{autorizador_nombre}</strong>,</p>
+                <p>El colaborador <strong>{solicitante_nombre}</strong> ha radicado una solicitud de anticipo que <strong>supera el tope estándar permitido ({_formatear_moneda(monto_tope)})</strong> y te ha seleccionado como la persona autorizada para avalar el sobretope:</p>
+
+                <div class="card-monto">
+                    <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700;">Monto Solicitado</div>
+                    <div class="valor">{_formatear_moneda(valor)}</div>
+                    <div class="comparativa">Tope estándar permitido: <strong>{_formatear_moneda(monto_tope)}</strong></div>
+                </div>
+
+                <table class="detalles-tabla">
+                    <tr><td class="label">Solicitante:</td><td class="val">{solicitante_nombre}</td></tr>
+                    <tr><td class="label">Cédula:</td><td class="val">{solicitante_cedula}</td></tr>
+                    <tr><td class="label">Cargo:</td><td class="val">{solicitante_cargo or 'N/A'}</td></tr>
+                    <tr><td class="label">Obra:</td><td class="val">{obra} ({centro_costo})</td></tr>
+                    <tr><td class="label">Motivo:</td><td class="val">{motivo_tipo.capitalize()} - {motivo_detalle or 'N/A'}</td></tr>
+                    <tr><td class="label">Justificación:</td><td class="val">{justificacion or 'Sin justificación detallada'}</td></tr>
+                </table>
+
+                <div class="banner-alerta">
+                    <strong>Importante:</strong> Esta solicitud permanecerá en espera hasta que decidas autorizar o rechazar el sobretope. Si autorizas el monto, ingresará inmediatamente al flujo de aprobación correspondiente.
+                </div>
+
+                <div style="text-align: center;">
+                    <a href="{url_revision}" class="btn">Revisar y Autorizar Sobretope</a>
+                </div>
+            </div>
+            <div class="footer">
+                Sistema de Anticipos &middot; PCM Mejía
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return await enviar_correo(destinatario, asunto, html)
+
+
+async def notificar_rechazo_sobretope(
+    destinatario: str,
+    solicitante_nombre: str,
+    anticipo_id: int,
+    autorizador_nombre: str,
+    valor: float,
+    monto_tope: float,
+    motivo_rechazo: str,
+) -> bool:
+    """
+    Notifica al solicitante que su solicitud que superó el tope fue rechazada en la fase de pre-autorización.
+    """
+    asunto = f"❌ Anticipo #{anticipo_id} RECHAZADO: No se autorizó el sobretope ({_formatear_moneda(valor)})"
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }}
+        .wrapper {{ width: 100%; background-color: #f8fafc; padding: 30px 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; border: 1px solid #fca5a5; overflow: hidden; }}
+        .header {{ background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); padding: 25px 30px; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 20px; font-weight: 700; }}
+        .body {{ padding: 30px; color: #334155; }}
+        .card-rechazo {{ background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: 20px; margin: 20px 0; }}
+        .footer {{ text-align: center; font-size: 12px; color: #94a3b8; padding: 20px; border-top: 1px solid #f1f5f9; }}
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>Sobretope de Anticipo #{anticipo_id} No Autorizado</h1>
+            </div>
+            <div class="body">
+                <p>Estimado(a) <strong>{solicitante_nombre}</strong>,</p>
+                <p>Te informamos que tu solicitud de anticipo por valor de <strong>{_formatear_moneda(valor)}</strong>, la cual superó el tope máximo estándar de <strong>{_formatear_moneda(monto_tope)}</strong>, <strong>no fue autorizada</strong> por el responsable de sobretope:</p>
+
+                <div class="card-rechazo">
+                    <div style="font-size: 14px; margin-bottom: 8px;"><strong>Revisado por:</strong> {autorizador_nombre} (Autorizador de Sobretope)</div>
+                    <div style="font-size: 14px; color: #991b1b; font-weight: 600;">Motivo del Rechazo:</div>
+                    <p style="margin: 6px 0 0 0; font-size: 14px; color: #7f1d1d; font-style: italic; background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #fee2e2;">
+                        "{motivo_rechazo or 'El monto excede el límite permitido y no cuenta con autorización especial.'}"
+                    </p>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b;">
+                    Tu solicitud ha sido cancelada. Si necesitas el anticipo, por favor radica una nueva solicitud ajustada al tope permitido o coordina previamente con el autorizador.
+                </p>
+            </div>
+            <div class="footer">
+                Sistema de Anticipos &middot; PCM Mejía
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return await enviar_correo(destinatario, asunto, html)
+
+
+async def notificar_aprobacion_sobretope_solicitante(
+    destinatario: str,
+    solicitante_nombre: str,
+    anticipo_id: int,
+    autorizador_nombre: str,
+    valor: float,
+    primer_aprobador_nombre: str,
+    primer_aprobador_rol: str,
+) -> bool:
+    """
+    Notifica al solicitante que su sobretope fue aprobado y que su solicitud ingresó al flujo formal de aprobación.
+    """
+    asunto = f"✅ Sobretope Autorizado: Anticipo #{anticipo_id} ({_formatear_moneda(valor)}) ingresó al flujo de aprobación"
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }}
+        .wrapper {{ width: 100%; background-color: #f8fafc; padding: 30px 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; border: 1px solid #bbf7d0; overflow: hidden; }}
+        .header {{ background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 25px 30px; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 20px; font-weight: 700; }}
+        .body {{ padding: 30px; color: #334155; }}
+        .banner {{ background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 18px; margin: 18px 0; }}
+        .footer {{ text-align: center; font-size: 12px; color: #94a3b8; padding: 20px; border-top: 1px solid #f1f5f9; }}
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <h1>Sobretope Autorizado Exitosamente</h1>
+            </div>
+            <div class="body">
+                <p>Estimado(a) <strong>{solicitante_nombre}</strong>,</p>
+                <p>Te informamos que <strong>{autorizador_nombre}</strong> ha <strong>autorizado el monto especial</strong> de tu anticipo <strong>#{anticipo_id}</strong> por valor de <strong>{_formatear_moneda(valor)}</strong>.</p>
+
+                <div class="banner">
+                    <div style="font-size: 14px; color: #065f46; font-weight: 700;">🚀 Tu solicitud ya ingresó al flujo de aprobación formal:</div>
+                    <div style="font-size: 14px; color: #047857; margin-top: 6px;">
+                        Actualmente está en el <strong>Paso 1 ({primer_aprobador_rol})</strong> asignado a <strong>{primer_aprobador_nombre}</strong>.
+                    </div>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b;">
+                    Te seguiremos notificando automáticamente a medida que avance el ciclo de firmas.
+                </p>
+            </div>
+            <div class="footer">
+                Sistema de Anticipos &middot; PCM Mejía
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return await enviar_correo(destinatario, asunto, html)

@@ -26,6 +26,11 @@ export default function HeaderBar() {
     setEmailDemo("");
   };
 
+  const esAdmin =
+    user?.email?.toLowerCase() === "jheyson.mena@pcmejia.com.co" ||
+    user?.rol === "ADMINISTRADOR" ||
+    user?.role === "ADMINISTRADOR";
+
   return (
     <header className="top-header-bar">
       {/* Lado Izquierdo: Estado de Conexión Pandora */}
@@ -47,7 +52,16 @@ export default function HeaderBar() {
                 {user.name?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="header-user-info">
-                <span className="header-user-name">{user.name}</span>
+                <div className="header-user-name-row">
+                  <span className="header-user-name">{user.name}</span>
+                  {esAdmin ? (
+                    <span className="header-badge-admin">👑 Admin</span>
+                  ) : user.rol ? (
+                    <span className="header-badge-rol">
+                      {user.rol === "APROBADOR" ? "✍️ Aprobador" : user.rol === "RECAUDO" ? "💵 Recaudo" : "📝 Solicitante"}
+                    </span>
+                  ) : null}
+                </div>
                 <span className="header-user-cargo" title={user.cargo || user.email}>
                   {user.cargo || user.email || "Usuario Corporativo"}
                 </span>

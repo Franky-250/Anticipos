@@ -9,6 +9,7 @@ const formatoMoneda = new Intl.NumberFormat("es-CO", {
 
 const ETIQUETAS_ESTADO = {
   pendiente: "Pendiente",
+  en_autorizacion_tope: "Requiere Sobretope",
   aprobado: "Aprobado",
   rechazado: "Rechazado",
 };

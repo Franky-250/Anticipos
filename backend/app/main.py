@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import auth, models
 from .database import engine, migrate_db
-from .routers import anticipos, colaboradores, maestras
+from .routers import accesos, anticipos, colaboradores, maestras, topes
 
 models.Base.metadata.create_all(bind=engine)
 migrate_db()
@@ -26,6 +26,8 @@ app.include_router(auth.router)
 app.include_router(anticipos.router)
 app.include_router(maestras.router)
 app.include_router(colaboradores.router)
+app.include_router(accesos.router)
+app.include_router(topes.router)
 
 
 @app.get("/api/health")

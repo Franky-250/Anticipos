@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   buscarEmpleados,
   crearAnticipo,
   evaluarFlujoPorCargo,
   listarAutorizadores,
   listarCentros,
+  obtenerConfiguracionTope,
 } from "./api";
 import SearchableSelect from "./components/SearchableSelect";
 import SignaturePad from "./components/SignaturePad";
@@ -25,6 +26,10 @@ const CAMPOS_INICIALES = {
   obra_destino: "",
   transporte_otro: false,
   firma: "",
+  supera_tope: false,
+  autorizador_tope_nombre: "",
+  autorizador_tope_cargo: "",
+  autorizador_tope_email: "",
 };
 
 const formatoMoneda = new Intl.NumberFormat("es-CO", {
@@ -43,6 +48,7 @@ export default function SolicitudForm({ onCreado }) {
   const [centros, setCentros] = useState([]);
   const [autorizadores, setAutorizadores] = useState([]);
   const [flujoEvaluado, setFlujoEvaluado] = useState(null);
+  const [configTope, setConfigTope] = useState(null);
 
   const [busquedaEmpleado, setBusquedaEmpleado] = useState("");
   const [sugerencias, setSugerencias] = useState([]);
@@ -50,11 +56,46 @@ export default function SolicitudForm({ onCreado }) {
   const [buscandoEmpleado, setBuscandoEmpleado] = useState(false);
   const contenedorBusquedaRef = useRef(null);
 
-
   useEffect(() => {
     listarCentros().then(setCentros).catch(() => setCentros([]));
     listarAutorizadores().then(setAutorizadores).catch(() => setAutorizadores([]));
+    obtenerConfiguracionTope().then(setConfigTope).catch(() => setConfigTope(null));
   }, []);
+
+  const montoTopeVal = configTope?.monto_tope ? Number(configTope.monto_tope) : 1500000;
+  const topeActivo = configTope?.activo ?? true;
+  const esSobretope = topeActivo && Number(form.valor) > montoTopeVal;
+
+  const opcionesAutorizadoresSobretope = useMemo(() => {
+    if (configTope?.autorizadores && configTope.autorizadores.length > 0) {
+      return configTope.autorizadores.map((a) => ({
+        codigo: a.nombre,
+        nombre: a.nombre,
+        cargo: a.cargo || "Autorizador Sobretope",
+        email: a.email || "",
+        objetoOriginal: a,
+      }));
+    }
+    return autorizadores.map((a) => ({
+      codigo: a.nombre,
+      nombre: a.nombre,
+      cargo: a.cargo || "",
+      email: a.email || "",
+      objetoOriginal: a,
+    }));
+  }, [configTope, autorizadores]);
+
+  function handleAutorizadorSobretopeChange(nombreOValor) {
+    const encontrado = opcionesAutorizadoresSobretope.find(
+      (op) => op.codigo === nombreOValor || op.nombre === nombreOValor
+    );
+    setForm((prev) => ({
+      ...prev,
+      autorizador_tope_nombre: encontrado ? encontrado.nombre : nombreOValor,
+      autorizador_tope_cargo: encontrado ? encontrado.cargo : "",
+      autorizador_tope_email: encontrado ? encontrado.email : "",
+    }));
+  }
 
   useEffect(() => {
     if (form.cargo) {
@@ -155,6 +196,9 @@ export default function SolicitudForm({ onCreado }) {
 
   function validarPaso2() {
     if (!form.valor || Number(form.valor) <= 0) return "Por favor ingresa un valor válido de anticipo.";
+    if (esSobretope && !form.autorizador_tope_nombre) {
+      return `El monto supera el tope estándar (${formatoMoneda.format(montoTopeVal)}). Por favor selecciona a la persona que autorizará el sobretope.`;
+    }
     if (!form.director_autoriza) return "Por favor selecciona la persona que autoriza.";
     if (form.motivo_tipo === "compras") {
       if (!form.motivo_detalle.trim()) return "Por favor detalla el motivo de las compras.";
@@ -207,6 +251,11 @@ export default function SolicitudForm({ onCreado }) {
       const payload = {
         ...form,
         valor: Number(form.valor),
+        supera_tope: esSobretope,
+        monto_tope_aplicado: esSobretope ? montoTopeVal : 0,
+        autorizador_tope_nombre: esSobretope ? form.autorizador_tope_nombre : "",
+        autorizador_tope_cargo: esSobretope ? form.autorizador_tope_cargo : "",
+        autorizador_tope_email: esSobretope ? form.autorizador_tope_email : "",
         justificacion:
           form.motivo_tipo === "compras"
             ? `Compras: ${form.motivo_detalle}`
@@ -469,6 +518,36 @@ export default function SolicitudForm({ onCreado }) {
               />
             </div>
 
+            {esSobretope && (
+              <div className="campo-completo alerta-sobretope-form">
+                <div className="alerta-sobretope-header">
+                  <span className="alerta-sobretope-icono">⚠️</span>
+                  <div>
+                    <strong>Solicitud de Sobretope Requerida</strong>
+                    <p>
+                      El monto solicitado ({formatoMoneda.format(Number(form.valor))}) supera el límite estándar permitido ({formatoMoneda.format(montoTopeVal)}).
+                      Debes seleccionar a una persona facultada para autorizar el sobretope antes de continuar el flujo normal.
+                    </p>
+                  </div>
+                </div>
+                <div className="alerta-sobretope-selector">
+                  <label htmlFor="autorizador_tope">
+                    Persona que autoriza el sobretope *
+                  </label>
+                  <SearchableSelect
+                    id="autorizador_tope"
+                    options={opcionesAutorizadoresSobretope}
+                    value={form.autorizador_tope_nombre}
+                    valueKey="nombre"
+                    labelKey="nombre"
+                    onChange={handleAutorizadorSobretopeChange}
+                    placeholder="Selecciona quién autorizará este sobretope..."
+                    searchPlaceholder="Buscar por nombre o cargo..."
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="campo campo-completo">
               <label htmlFor="motivo_tipo">Motivo del anticipo *</label>
               <div className="motivo-selector-grid">
@@ -626,6 +705,14 @@ export default function SolicitudForm({ onCreado }) {
                       {formatoMoneda.format(Number(form.valor))}
                     </span>
                   </div>
+                  {esSobretope && (
+                    <div className="resumen-item resumen-item-alerta">
+                      <span className="resumen-label">⚠️ Autorización de Sobretope:</span>
+                      <span className="resumen-valor" style={{ color: "#d97706", fontWeight: 700 }}>
+                        {form.autorizador_tope_nombre} {form.autorizador_tope_cargo ? `(${form.autorizador_tope_cargo})` : ""}
+                      </span>
+                    </div>
+                  )}
                   <div className="resumen-item">
                     <span className="resumen-label">Tipo de motivo:</span>
                     <span className="resumen-valor">

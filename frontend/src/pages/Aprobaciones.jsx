@@ -1,5 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
-import { listarAnticipos, aprobarPasoAnticipo, rechazarPasoAnticipo } from "../api";
+import {
+  listarAnticipos,
+  aprobarPasoAnticipo,
+  rechazarPasoAnticipo,
+  aprobarSobretopeAnticipo,
+  rechazarSobretopeAnticipo,
+} from "../api";
 import { useAuth } from "../context/AuthContext";
 
 const formatoMoneda = new Intl.NumberFormat("es-CO", {
@@ -21,8 +27,11 @@ export default function Aprobaciones() {
   const [modalAprobar, setModalAprobar] = useState(null);
   const [modalRechazar, setModalRechazar] = useState(null);
   const [modalDetalle, setModalDetalle] = useState(null);
+  const [modalAprobarSobretope, setModalAprobarSobretope] = useState(null);
+  const [modalRechazarSobretope, setModalRechazarSobretope] = useState(null);
   const [comentarioAprobacion, setComentarioAprobacion] = useState("");
   const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [motivoRechazoSobretope, setMotivoRechazoSobretope] = useState("");
   const [procesandoAccion, setProcesandoAccion] = useState(false);
 
   const cargarDatos = async () => {
@@ -48,7 +57,7 @@ export default function Aprobaciones() {
     setTimeout(() => setNotificacion(null), 4000);
   };
 
-  // Ejecutar Aprobación de Paso
+  // Ejecutar Aprobación de Paso Normal
   const handleAprobarPaso = async () => {
     if (!modalAprobar) return;
     try {
@@ -71,7 +80,7 @@ export default function Aprobaciones() {
     }
   };
 
-  // Ejecutar Rechazo de Paso
+  // Ejecutar Rechazo de Paso Normal
   const handleRechazarPaso = async () => {
     if (!modalRechazar) return;
     if (!motivoRechazo.trim()) {
@@ -94,6 +103,55 @@ export default function Aprobaciones() {
     } catch (err) {
       console.error("Error rechazando anticipo:", err);
       mostrarNotif("error", err.message || "Error al rechazar el anticipo.");
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  // Ejecutar Aprobación de Sobretope
+  const handleAprobarSobretope = async () => {
+    if (!modalAprobarSobretope) return;
+    try {
+      setProcesandoAccion(true);
+      await aprobarSobretopeAnticipo(modalAprobarSobretope.id, {
+        autorizador_nombre: user?.name || modalAprobarSobretope.autorizador_tope_nombre || "",
+        autorizador_email: user?.email || modalAprobarSobretope.autorizador_tope_email || "",
+      });
+
+      mostrarNotif("exito", `¡Sobretope del Anticipo #${modalAprobarSobretope.id} autorizado con éxito! Ahora iniciará el flujo de aprobación.`);
+      setModalAprobarSobretope(null);
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error autorizando sobretope:", err);
+      mostrarNotif("error", err.message || "Error al autorizar el sobretope.");
+    } finally {
+      setProcesandoAccion(false);
+    }
+  };
+
+  // Ejecutar Rechazo de Sobretope
+  const handleRechazarSobretope = async () => {
+    if (!modalRechazarSobretope) return;
+    if (!motivoRechazoSobretope.trim()) {
+      alert("Por favor indica el motivo del rechazo de sobretope.");
+      return;
+    }
+
+    try {
+      setProcesandoAccion(true);
+      await rechazarSobretopeAnticipo(modalRechazarSobretope.id, {
+        motivo: motivoRechazoSobretope.trim(),
+        autorizador_nombre: user?.name || modalRechazarSobretope.autorizador_tope_nombre || "",
+        autorizador_email: user?.email || modalRechazarSobretope.autorizador_tope_email || "",
+      });
+
+      mostrarNotif("exito", `Sobretope del Anticipo #${modalRechazarSobretope.id} rechazado.`);
+      setModalRechazarSobretope(null);
+      setMotivoRechazoSobretope("");
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error rechazando sobretope:", err);
+      mostrarNotif("error", err.message || "Error al rechazar el sobretope.");
     } finally {
       setProcesandoAccion(false);
     }
@@ -124,6 +182,7 @@ export default function Aprobaciones() {
 
   // Contadores para KPIs
   const conteoPendientes = useMemo(() => anticipos.filter((a) => a.estado === "pendiente").length, [anticipos]);
+  const conteoSobretope = useMemo(() => anticipos.filter((a) => a.estado === "en_autorizacion_tope").length, [anticipos]);
   const conteoAprobados = useMemo(() => anticipos.filter((a) => a.estado === "aprobado").length, [anticipos]);
   const conteoRechazados = useMemo(() => anticipos.filter((a) => a.estado === "rechazado").length, [anticipos]);
 
@@ -142,7 +201,7 @@ export default function Aprobaciones() {
         <div>
           <h2>Bandeja de Aprobaciones Multinivel</h2>
           <p>
-            Gestión inteligente de aprobaciones por cargos, secuencia y notificaciones vía Microsoft Graph API.
+            Gestión inteligente de aprobaciones por cargos, autorización de sobretopes y notificaciones vía Microsoft Graph API.
           </p>
         </div>
       </div>
@@ -157,7 +216,19 @@ export default function Aprobaciones() {
           <div className="kpi-icono">⏳</div>
           <div className="kpi-info">
             <span className="kpi-valor">{conteoPendientes}</span>
-            <span className="kpi-label">Pendientes de Aprobación</span>
+            <span className="kpi-label">Pendientes de Flujo</span>
+          </div>
+        </div>
+
+        <div
+          className={`kpi-card ${filtroEstado === "en_autorizacion_tope" ? "kpi-seleccionado" : ""}`}
+          onClick={() => setFiltroEstado("en_autorizacion_tope")}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="kpi-icono">⚠️</div>
+          <div className="kpi-info">
+            <span className="kpi-valor">{conteoSobretope}</span>
+            <span className="kpi-label">Requiere Sobretope</span>
           </div>
         </div>
 
@@ -223,6 +294,12 @@ export default function Aprobaciones() {
             Pendientes ({conteoPendientes})
           </button>
           <button
+            className={`btn-filtro-tag ${filtroEstado === "en_autorizacion_tope" ? "activo" : ""}`}
+            onClick={() => setFiltroEstado("en_autorizacion_tope")}
+          >
+            Sobretope ({conteoSobretope})
+          </button>
+          <button
             className={`btn-filtro-tag ${filtroEstado === "aprobado" ? "activo" : ""}`}
             onClick={() => setFiltroEstado("aprobado")}
           >
@@ -258,8 +335,6 @@ export default function Aprobaciones() {
       ) : (
         <div className="aprobaciones-grid-lista">
           {anticiposFiltrados.map((a) => {
-            const pasoActualObj = a.progreso_pasos?.find((p) => p.orden === a.paso_actual);
-
             return (
               <div key={a.id} className={`aprobacion-card-item estado-${a.estado}`}>
                 <div className="aprobacion-card-header">
@@ -268,6 +343,8 @@ export default function Aprobaciones() {
                     <span className={`badge-estado-pill pill-${a.estado}`}>
                       {a.estado === "pendiente"
                         ? `⏳ En Nivel ${a.paso_actual}/${a.total_pasos}`
+                        : a.estado === "en_autorizacion_tope"
+                        ? "⚠️ Requiere Sobretope"
                         : a.estado === "aprobado"
                         ? "✅ Aprobado Total"
                         : "❌ Rechazado"}
@@ -297,6 +374,28 @@ export default function Aprobaciones() {
                     </div>
                   </div>
 
+                  {a.estado === "en_autorizacion_tope" && (
+                    <div className="alerta-sobretope-card" style={{
+                      marginTop: "0.75rem",
+                      padding: "0.75rem 1rem",
+                      background: "rgba(245, 158, 11, 0.12)",
+                      border: "1px solid rgba(245, 158, 11, 0.3)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      gap: "0.6rem",
+                      alignItems: "flex-start",
+                      fontSize: "0.85rem"
+                    }}>
+                      <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+                      <div>
+                        <strong style={{ color: "#d97706" }}>Excede el tope estándar ({formatoMoneda.format(a.monto_tope_aplicado || 1500000)})</strong>
+                        <p style={{ margin: "2px 0 0 0", color: "var(--text-secondary)" }}>
+                          Autorizador designado: <strong>{a.autorizador_tope_nombre || "Autorizador"}</strong> {a.autorizador_tope_cargo ? `(${a.autorizador_tope_cargo})` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="aprobacion-detalles-meta">
                     <div className="meta-item">
                       <span className="meta-label">Obra / Centro:</span>
@@ -315,7 +414,9 @@ export default function Aprobaciones() {
                     <div className="timeline-titulo-bar">
                       <span>⛓️ Flujo: <strong>{a.flujo_nombre || "Flujo Corporativo"}</strong></span>
                       <span className="timeline-progreso-txt">
-                        Nivel {a.paso_actual} de {a.total_pasos}
+                        {a.estado === "en_autorizacion_tope"
+                          ? "En espera de sobretope"
+                          : `Nivel ${a.paso_actual} de ${a.total_pasos}`}
                       </span>
                     </div>
 
@@ -375,6 +476,24 @@ export default function Aprobaciones() {
                   >
                     🔍 Ver Detalle
                   </button>
+
+                  {a.estado === "en_autorizacion_tope" && (
+                    <div className="acciones-decision-btn">
+                      <button
+                        className="btn-accion-rechazar"
+                        onClick={() => setModalRechazarSobretope(a)}
+                      >
+                        ✕ Rechazar Sobretope
+                      </button>
+                      <button
+                        className="btn-accion-aprobar"
+                        style={{ background: "#d97706", borderColor: "#b45309" }}
+                        onClick={() => setModalAprobarSobretope(a)}
+                      >
+                        ✓ Autorizar Sobretope
+                      </button>
+                    </div>
+                  )}
 
                   {a.estado === "pendiente" && (
                     <div className="acciones-decision-btn">
@@ -531,6 +650,18 @@ export default function Aprobaciones() {
                   {modalDetalle.justificacion && (
                     <div className="fila-detalle-modal"><span>Justificación:</span><strong>{modalDetalle.justificacion}</strong></div>
                   )}
+                  {modalDetalle.supera_tope && (
+                    <div className="fila-detalle-modal" style={{ marginTop: "0.5rem", padding: "0.5rem", background: "rgba(245, 158, 11, 0.1)", borderRadius: "6px" }}>
+                      <span>⚠️ Sobretope:</span>
+                      <div>
+                        <strong style={{ color: "#d97706" }}>Tope: {formatoMoneda.format(modalDetalle.monto_tope_aplicado || 1500000)}</strong>
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                          Autorizador: {modalDetalle.autorizador_tope_nombre || "N/A"}
+                          {modalDetalle.autorizado_tope ? " (✓ Autorizado)" : modalDetalle.motivo_rechazo_tope ? " (✕ Rechazado)" : " (⏳ Pendiente de autorización)"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -573,6 +704,85 @@ export default function Aprobaciones() {
             <div className="modal-footer">
               <button className="btn-cancelar-modal" onClick={() => setModalDetalle(null)}>
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE AUTORIZAR SOBRETOPE */}
+      {modalAprobarSobretope && (
+        <div className="modal-overlay">
+          <div className="modal-contenido modal-sm">
+            <div className="modal-header" style={{ borderBottomColor: "#d97706" }}>
+              <h3>⚠️ Autorizar Sobretope #{modalAprobarSobretope.id}</h3>
+              <button className="btn-cerrar-modal" onClick={() => setModalAprobarSobretope(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p>
+                ¿Confirmas la autorización del <strong>sobretope</strong> para el anticipo <strong>#{modalAprobarSobretope.id}</strong> solicitado por <strong>{modalAprobarSobretope.nombre}</strong>?
+              </p>
+              <div style={{ background: "var(--bg-tertiary)", padding: "0.8rem", borderRadius: "8px", margin: "1rem 0", fontSize: "0.9rem" }}>
+                <div><strong>Monto solicitado:</strong> {formatoMoneda.format(modalAprobarSobretope.valor)}</div>
+                <div><strong>Límite estándar:</strong> {formatoMoneda.format(modalAprobarSobretope.monto_tope_aplicado || 1500000)}</div>
+                <div style={{ marginTop: "0.3rem", color: "#d97706", fontWeight: 600 }}>
+                  Excedente: {formatoMoneda.format(modalAprobarSobretope.valor - (modalAprobarSobretope.monto_tope_aplicado || 1500000))}
+                </div>
+              </div>
+              <div className="alerta-info-modal">
+                ℹ️ Al autorizar este sobretope, el anticipo pasará a estado <strong>Pendiente</strong> e iniciará el ciclo formal de aprobación secuencial (Paso 1).
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancelar-modal" onClick={() => setModalAprobarSobretope(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn-confirmar-aprobar"
+                style={{ background: "#d97706", borderColor: "#b45309" }}
+                onClick={handleAprobarSobretope}
+                disabled={procesandoAccion}
+              >
+                {procesandoAccion ? "Autorizando..." : "Confirmar Autorización de Sobretope"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECHAZAR SOBRETOPE */}
+      {modalRechazarSobretope && (
+        <div className="modal-overlay">
+          <div className="modal-contenido modal-sm">
+            <div className="modal-header header-rechazo">
+              <h3>❌ Rechazar Sobretope #{modalRechazarSobretope.id}</h3>
+              <button className="btn-cerrar-modal" onClick={() => setModalRechazarSobretope(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p>
+                Indica el motivo por el cual <strong>no se autoriza el sobretope</strong> de <strong>{formatoMoneda.format(modalRechazarSobretope.valor)}</strong> a <strong>{modalRechazarSobretope.nombre}</strong>.
+              </p>
+              <div className="campo-form-modal">
+                <label>Motivo de no autorización (Obligatorio):</label>
+                <textarea
+                  rows="3"
+                  value={motivoRechazoSobretope}
+                  onChange={(e) => setMotivoRechazoSobretope(e.target.value)}
+                  placeholder="Explica el motivo por el que no se concede el monto superior al tope..."
+                  required
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancelar-modal" onClick={() => setModalRechazarSobretope(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn-confirmar-rechazar"
+                onClick={handleRechazarSobretope}
+                disabled={procesandoAccion || !motivoRechazoSobretope.trim()}
+              >
+                {procesandoAccion ? "Rechazando..." : "Confirmar Rechazo de Sobretope"}
               </button>
             </div>
           </div>

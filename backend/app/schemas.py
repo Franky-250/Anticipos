@@ -56,6 +56,10 @@ class AnticipoCreate(BaseModel):
     transporte_otro: bool = Field(default=False)
     justificacion: str | None = Field(default="")
     firma: str | None = Field(default="")
+    supera_tope: bool = Field(default=False)
+    autorizador_tope_nombre: str | None = Field(default="")
+    autorizador_tope_cargo: str | None = Field(default="")
+    autorizador_tope_email: str | None = Field(default="")
 
 
 class AnticipoOut(AnticipoCreate):
@@ -72,6 +76,10 @@ class AnticipoOut(AnticipoCreate):
     fecha_legalizacion: datetime | None = None
     legalizado_por: str | None = ""
     observaciones_legalizacion: str | None = ""
+    monto_tope_aplicado: Decimal | None = Decimal(1500000)
+    autorizado_tope: bool | None = None
+    fecha_autorizacion_tope: datetime | None = None
+    motivo_rechazo_tope: str | None = ""
     created_at: datetime
     progreso_pasos: list[AnticipoPasoProgresoOut] = Field(default_factory=list)
 
@@ -94,6 +102,49 @@ class RechazarPasoRequest(BaseModel):
     motivo: str = Field(min_length=1)
     aprobador_nombre: str | None = ""
     aprobador_email: str | None = ""
+
+
+class AutorizarSobretopeRequest(BaseModel):
+    comentario: str | None = ""
+    autorizador_nombre: str | None = ""
+    autorizador_email: str | None = ""
+
+
+class RechazarSobretopeRequest(BaseModel):
+    motivo: str = Field(min_length=1)
+    autorizador_nombre: str | None = ""
+    autorizador_email: str | None = ""
+
+
+class ConfiguracionTopeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    monto_tope: Decimal
+    activo: bool
+    descripcion: str | None = ""
+    autorizadores: list[dict] = Field(default_factory=list)
+    updated_at: datetime | None = None
+
+    @field_validator("autorizadores", mode="before")
+    @classmethod
+    def parse_autorizadores(cls, v):
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except Exception:
+                return []
+        if isinstance(v, list):
+            return v
+        return []
+
+
+class ConfiguracionTopeUpdate(BaseModel):
+    monto_tope: Decimal | None = None
+    activo: bool | None = None
+    descripcion: str | None = None
+    autorizadores: list[dict] | None = None
 
 
 
@@ -172,6 +223,46 @@ class FlujoAprobacionOut(FlujoAprobacionBase):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     pasos: list[PasoAprobacionOut] = Field(default_factory=list)
+
+
+# Schemas para Gestión de Roles y Accesos
+class UsuarioRolBase(BaseModel):
+    email: str = Field(min_length=3)
+    nombre: str = Field(default="")
+    cedula: str | None = Field(default="")
+    cargo: str | None = Field(default="")
+    rol: str = Field(default="SOLICITANTE")
+    activo: bool = Field(default=True)
+
+
+class UsuarioRolCreate(UsuarioRolBase):
+    pass
+
+
+class UsuarioRolUpdate(BaseModel):
+    nombre: str | None = None
+    cedula: str | None = None
+    cargo: str | None = None
+    rol: str | None = None
+    activo: bool | None = None
+
+
+class UsuarioRolOut(UsuarioRolBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class CatalogoRolOut(BaseModel):
+    id: str
+    nombre: str
+    descripcion: str
+    color: str
+    icono: str
+    es_admin: bool = False
+
 
 
 

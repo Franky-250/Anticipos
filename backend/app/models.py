@@ -21,6 +21,7 @@ class EstadoAnticipo(str, enum.Enum):
     PENDIENTE = "pendiente"
     APROBADO = "aprobado"
     RECHAZADO = "rechazado"
+    EN_AUTORIZACION_TOPE = "en_autorizacion_tope"
 
 
 class Anticipo(Base):
@@ -54,6 +55,17 @@ class Anticipo(Base):
     fecha_legalizacion = Column(DateTime(timezone=True), nullable=True)
     legalizado_por = Column(String, nullable=True, default="")
     observaciones_legalizacion = Column(Text, nullable=True, default="")
+
+    # Campos de Control de Tope y Sobretope
+    supera_tope = Column(Boolean, default=False)
+    monto_tope_aplicado = Column(Numeric(14, 2), nullable=True, default=1500000)
+    autorizador_tope_nombre = Column(String, nullable=True, default="")
+    autorizador_tope_cargo = Column(String, nullable=True, default="")
+    autorizador_tope_email = Column(String, nullable=True, default="")
+    autorizado_tope = Column(Boolean, nullable=True, default=None)
+    fecha_autorizacion_tope = Column(DateTime(timezone=True), nullable=True)
+    motivo_rechazo_tope = Column(Text, nullable=True, default="")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     progreso_pasos = relationship(
@@ -125,6 +137,33 @@ class PasoAprobacion(Base):
     aprobadores_opcionales = Column(Text, nullable=True, default="[]")
 
     flujo = relationship("FlujoAprobacion", back_populates="pasos")
+
+
+class UsuarioRol(Base):
+    __tablename__ = "usuarios_roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    nombre = Column(String, nullable=False, default="")
+    cedula = Column(String, nullable=True, default="")
+    cargo = Column(String, nullable=True, default="")
+    rol = Column(String, nullable=False, default="SOLICITANTE")  # ADMINISTRADOR, APROBADOR, RECAUDO, SOLICITANTE, AUDITOR
+    activo = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ConfiguracionTope(Base):
+    __tablename__ = "configuracion_topes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    monto_tope = Column(Numeric(14, 2), nullable=False, default=1500000)
+    activo = Column(Boolean, default=True)
+    descripcion = Column(String, nullable=True, default="Tope estándar para anticipos de obra")
+    autorizadores = Column(Text, nullable=True, default="[]")  # JSON string: [{"nombre":"...","cargo":"...","email":"...","cedula":"..."}]
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 
 
 

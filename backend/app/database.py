@@ -34,6 +34,14 @@ def migrate_db():
                 ("fecha_legalizacion", "DATETIME DEFAULT NULL"),
                 ("legalizado_por", "VARCHAR DEFAULT ''"),
                 ("observaciones_legalizacion", "TEXT DEFAULT ''"),
+                ("supera_tope", "BOOLEAN DEFAULT 0"),
+                ("monto_tope_aplicado", "NUMERIC(14, 2) DEFAULT 1500000"),
+                ("autorizador_tope_nombre", "VARCHAR DEFAULT ''"),
+                ("autorizador_tope_cargo", "VARCHAR DEFAULT ''"),
+                ("autorizador_tope_email", "VARCHAR DEFAULT ''"),
+                ("autorizado_tope", "BOOLEAN DEFAULT NULL"),
+                ("fecha_autorizacion_tope", "DATETIME DEFAULT NULL"),
+                ("motivo_rechazo_tope", "TEXT DEFAULT ''"),
             ]
             for col_name, col_type in new_columns:
                 if col_name not in columns:
@@ -74,6 +82,51 @@ def migrate_db():
 
     Base.metadata.create_all(bind=engine)
 
+    # Sembrar Administrador Inicial (jheyson.mena@pcmejia.com.co) si no existe
+    with engine.connect() as conn:
+        admin_email = "jheyson.mena@pcmejia.com.co"
+        res = conn.execute(
+            text("SELECT id, rol FROM usuarios_roles WHERE LOWER(email) = :email"),
+            {"email": admin_email.lower()}
+        ).fetchone()
+        if not res:
+            conn.execute(
+                text(
+                    "INSERT INTO usuarios_roles (email, nombre, cargo, rol, activo) "
+                    "VALUES (:email, :nombre, :cargo, :rol, :activo)"
+                ),
+                {
+                    "email": admin_email.lower(),
+                    "nombre": "Jheyson Mena",
+                    "cargo": "Administrador del Sistema",
+                    "rol": "ADMINISTRADOR",
+                    "activo": True,
+                }
+            )
+            conn.commit()
+        elif res[1] != "ADMINISTRADOR":
+            conn.execute(
+                text("UPDATE usuarios_roles SET rol = 'ADMINISTRADOR', activo = 1 WHERE id = :id"),
+                {"id": res[0]}
+            )
+            conn.commit()
+
+        # Sembrar Configuración de Tope Predeterminado ($1.500.000) si no existe
+        res_tope = conn.execute(text("SELECT id FROM configuracion_topes LIMIT 1")).fetchone()
+        if not res_tope:
+            conn.execute(
+                text(
+                    "INSERT INTO configuracion_topes (monto_tope, activo, descripcion, autorizadores) "
+                    "VALUES (:monto, :activo, :desc, :autorizadores)"
+                ),
+                {
+                    "monto": 1500000,
+                    "activo": True,
+                    "desc": "Tope estándar para anticipos de obra ($1.500.000 COP)",
+                    "autorizadores": "[]",
+                }
+            )
+            conn.commit()
 
 
 def seed_flujos_predeterminados():

@@ -98,19 +98,37 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
     flujo_nombre = flujo.nombre if flujo else "Flujo Estándar"
     pasos_definidos = flujo.pasos if flujo else []
 
-    # 3. Crear el anticipo base
+    # 3. Consultar configuración de topes y evaluar si supera el tope
+    config_tope = db.query(models.ConfiguracionTope).first()
+    monto_tope_limite = float(config_tope.monto_tope) if config_tope else 1500000.0
+    tope_activo = bool(config_tope.activo) if config_tope else True
+    es_sobretope = tope_activo and (float(datos.valor) > monto_tope_limite)
+
+    # 4. Crear el anticipo base
     anticipo_dict = datos.model_dump()
     anticipo_dict["email_solicitante"] = email_solicitante
     anticipo_dict["flujo_id"] = flujo_id
     anticipo_dict["flujo_nombre"] = flujo_nombre
     anticipo_dict["paso_actual"] = 1
     anticipo_dict["total_pasos"] = max(1, len(pasos_definidos))
+    anticipo_dict["supera_tope"] = es_sobretope
+    anticipo_dict["monto_tope_aplicado"] = Decimal(monto_tope_limite)
+
+    if es_sobretope:
+        anticipo_dict["estado"] = models.EstadoAnticipo.EN_AUTORIZACION_TOPE
+        # Resolver email del autorizador de sobretope si no vino
+        email_tope = (datos.autorizador_tope_email or "").strip()
+        if not email_tope and datos.autorizador_tope_nombre:
+            email_tope = await _buscar_email_en_cronos(datos.autorizador_tope_nombre)
+        anticipo_dict["autorizador_tope_email"] = email_tope
+    else:
+        anticipo_dict["estado"] = models.EstadoAnticipo.PENDIENTE
 
     anticipo = models.Anticipo(**anticipo_dict)
     db.add(anticipo)
     db.flush()
 
-    # 4. Generar la secuencia de pasos snapshot (AnticipoPasoProgreso)
+    # 5. Generar la secuencia de pasos snapshot (AnticipoPasoProgreso)
     pasos_progreso_creados = []
     if pasos_definidos:
         for idx, p in enumerate(pasos_definidos, start=1):
@@ -132,7 +150,8 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
                 rol_aprob = p.rol_nivel or f"Paso {idx}"
                 email_aprob = await _buscar_email_en_cronos(nombre_aprob, cedula_aprob)
 
-            estado_inicial = "pendiente" if idx == 1 else "en_espera"
+            # Si es sobretope, todos los pasos arrancan en espera hasta que se apruebe el sobretope
+            estado_inicial = "en_espera" if es_sobretope else ("pendiente" if idx == 1 else "en_espera")
 
             # Resolver aprobadores opcionales del paso
             opcionales_list = []
@@ -174,6 +193,7 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
     else:
         # Si no había flujo configurado, generar paso único con el director que autoriza
         email_dir = await _buscar_email_en_cronos(datos.director_autoriza)
+        estado_inicial = "en_espera" if es_sobretope else "pendiente"
         paso_prog = models.AnticipoPasoProgreso(
             anticipo_id=anticipo.id,
             orden=1,
@@ -183,7 +203,7 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
             email_aprobador=email_dir,
             rol_nivel="Autorizador de la Solicitud",
             es_dinamico=True,
-            estado="pendiente",
+            estado=estado_inicial,
             aprobadores_opcionales="[]",
         )
         db.add(paso_prog)
@@ -192,11 +212,137 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
     db.commit()
     db.refresh(anticipo)
 
-    # 5. Notificar por correo al primer aprobador (Paso 1) y confirmación al solicitante
-    if pasos_progreso_creados:
-        primer_paso = pasos_progreso_creados[0]
-        
-        # Extraer opcionales
+    # 6. Notificaciones de inicio
+    if es_sobretope:
+        # Enviar correo de pre-autorización al autorizador de sobretope
+        if anticipo.autorizador_tope_email:
+            try:
+                await mailer.notificar_solicitud_sobretope(
+                    destinatario=anticipo.autorizador_tope_email,
+                    autorizador_nombre=anticipo.autorizador_tope_nombre or "Autorizador de Sobretope",
+                    anticipo_id=anticipo.id,
+                    solicitante_nombre=anticipo.nombre,
+                    solicitante_cargo=anticipo.cargo or "",
+                    solicitante_cedula=anticipo.cedula,
+                    centro_costo=anticipo.centro_costo,
+                    obra=anticipo.obra,
+                    valor=float(anticipo.valor),
+                    monto_tope=monto_tope_limite,
+                    motivo_tipo=anticipo.motivo_tipo or "compras",
+                    motivo_detalle=anticipo.motivo_detalle or "",
+                    justificacion=anticipo.justificacion or "",
+                )
+            except Exception as e:
+                logger.error(f"Error enviando correo de sobretope: {e}")
+    else:
+        # Notificar por correo al primer aprobador (Paso 1) y confirmación al solicitante
+        if pasos_progreso_creados:
+            primer_paso = pasos_progreso_creados[0]
+            
+            # Extraer opcionales
+            opcionales_data = []
+            if primer_paso.aprobadores_opcionales:
+                try:
+                    opcionales_data = json.loads(primer_paso.aprobadores_opcionales) if isinstance(primer_paso.aprobadores_opcionales, str) else primer_paso.aprobadores_opcionales
+                except Exception:
+                    opcionales_data = []
+
+            cc_list = [opc["email"] for opc in opcionales_data if opc.get("email")]
+            nombres_opc = [
+                f"{opc['nombre']} ({opc['cargo']})" if opc.get("cargo") else opc["nombre"]
+                for opc in opcionales_data if opc.get("nombre")
+            ]
+
+            destinatario_principal = primer_paso.email_aprobador or (cc_list[0] if cc_list else "")
+            cc_filtrada = [e for e in cc_list if e != destinatario_principal]
+
+            if destinatario_principal:
+                try:
+                    await mailer.notificar_aprobador_turno(
+                        destinatario=destinatario_principal,
+                        nombre_aprobador=primer_paso.nombre_aprobador,
+                        anticipo_id=anticipo.id,
+                        solicitante_nombre=anticipo.nombre,
+                        solicitante_cargo=anticipo.cargo or "",
+                        solicitante_cedula=anticipo.cedula,
+                        centro_costo=anticipo.centro_costo,
+                        obra=anticipo.obra,
+                        valor=float(anticipo.valor),
+                        motivo_tipo=anticipo.motivo_tipo or "compras",
+                        motivo_detalle=anticipo.motivo_detalle or "",
+                        justificacion=anticipo.justificacion or "",
+                        orden_paso=1,
+                        total_pasos=anticipo.total_pasos,
+                        rol_nivel=primer_paso.rol_nivel or "Aprobador",
+                        cc_aprobadores_opcionales=cc_filtrada if cc_filtrada else None,
+                        nombres_opcionales=nombres_opc if nombres_opc else None,
+                    )
+                except Exception as e:
+                    logger.error(f"Error enviando correo de inicio de flujo: {e}")
+
+            # Enviar confirmación de radicación al solicitante si tiene correo
+            if anticipo.email_solicitante:
+                try:
+                    await mailer.notificar_radicacion_solicitante(
+                        destinatario=anticipo.email_solicitante,
+                        solicitante_nombre=anticipo.nombre,
+                        anticipo_id=anticipo.id,
+                        valor=float(anticipo.valor),
+                        centro_costo=anticipo.centro_costo,
+                        obra=anticipo.obra,
+                        primer_aprobador_nombre=primer_paso.nombre_aprobador,
+                        primer_aprobador_rol=primer_paso.rol_nivel or "Aprobador Paso 1",
+                        total_pasos=anticipo.total_pasos,
+                    )
+                except Exception as e:
+                    logger.error(f"Error enviando confirmación de radicación al solicitante: {e}")
+
+    return anticipo
+
+
+@router.post("/{anticipo_id}/aprobar-sobretope", response_model=schemas.AnticipoOut)
+async def aprobar_sobretope_anticipo(
+    anticipo_id: int,
+    payload: schemas.AutorizarSobretopeRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Aprueba el sobretope de un anticipo en estado EN_AUTORIZACION_TOPE,
+    activando el Paso 1 del flujo regular de aprobaciones y notificando por correo.
+    """
+    anticipo = (
+        db.query(models.Anticipo)
+        .options(joinedload(models.Anticipo.progreso_pasos))
+        .filter(models.Anticipo.id == anticipo_id)
+        .first()
+    )
+    if not anticipo:
+        raise HTTPException(status_code=404, detail="Anticipo no encontrado")
+
+    if anticipo.estado != models.EstadoAnticipo.EN_AUTORIZACION_TOPE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Este anticipo no está pendiente de autorización de sobretope (Estado actual: '{anticipo.estado.value}').",
+        )
+
+    # 1. Marcar sobretope como autorizado
+    anticipo.autorizado_tope = True
+    anticipo.fecha_autorizacion_tope = datetime.now()
+    anticipo.estado = models.EstadoAnticipo.PENDIENTE
+    anticipo.paso_actual = 1
+
+    # 2. Activar Paso 1
+    primer_paso = next((p for p in anticipo.progreso_pasos if p.orden == 1), None)
+    if primer_paso:
+        primer_paso.estado = "pendiente"
+
+    db.commit()
+    db.refresh(anticipo)
+
+    nombre_autorizador = payload.autorizador_nombre or anticipo.autorizador_tope_nombre or "Autorizador de Sobretope"
+
+    # 3. Notificar al primer aprobador del flujo
+    if primer_paso:
         opcionales_data = []
         if primer_paso.aprobadores_opcionales:
             try:
@@ -235,24 +381,77 @@ async def crear_anticipo(datos: schemas.AnticipoCreate, db: Session = Depends(ge
                     nombres_opcionales=nombres_opc if nombres_opc else None,
                 )
             except Exception as e:
-                logger.error(f"Error enviando correo de inicio de flujo: {e}")
+                logger.error(f"Error notificando al primer aprobador tras sobretope: {e}")
 
-        # Enviar confirmación de radicación al solicitante si tiene correo
-        if anticipo.email_solicitante:
-            try:
-                await mailer.notificar_radicacion_solicitante(
-                    destinatario=anticipo.email_solicitante,
-                    solicitante_nombre=anticipo.nombre,
-                    anticipo_id=anticipo.id,
-                    valor=float(anticipo.valor),
-                    centro_costo=anticipo.centro_costo,
-                    obra=anticipo.obra,
-                    primer_aprobador_nombre=primer_paso.nombre_aprobador,
-                    primer_aprobador_rol=primer_paso.rol_nivel or "Aprobador Paso 1",
-                    total_pasos=anticipo.total_pasos,
-                )
-            except Exception as e:
-                logger.error(f"Error enviando confirmación de radicación al solicitante: {e}")
+    # 4. Notificar al solicitante que el sobretope fue aprobado
+    if anticipo.email_solicitante:
+        try:
+            await mailer.notificar_aprobacion_sobretope_solicitante(
+                destinatario=anticipo.email_solicitante,
+                solicitante_nombre=anticipo.nombre,
+                anticipo_id=anticipo.id,
+                autorizador_nombre=nombre_autorizador,
+                valor=float(anticipo.valor),
+                primer_aprobador_nombre=primer_paso.nombre_aprobador if primer_paso else "Aprobador Paso 1",
+                primer_aprobador_rol=primer_paso.rol_nivel if primer_paso else "Paso 1",
+            )
+        except Exception as e:
+            logger.error(f"Error enviando confirmación de sobretope al solicitante: {e}")
+
+    return anticipo
+
+
+@router.post("/{anticipo_id}/rechazar-sobretope", response_model=schemas.AnticipoOut)
+async def rechazar_sobretope_anticipo(
+    anticipo_id: int,
+    payload: schemas.RechazarSobretopeRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Rechaza el sobretope de un anticipo en estado EN_AUTORIZACION_TOPE, detiene la solicitud y notifica al solicitante.
+    """
+    anticipo = (
+        db.query(models.Anticipo)
+        .options(joinedload(models.Anticipo.progreso_pasos))
+        .filter(models.Anticipo.id == anticipo_id)
+        .first()
+    )
+    if not anticipo:
+        raise HTTPException(status_code=404, detail="Anticipo no encontrado")
+
+    if anticipo.estado != models.EstadoAnticipo.EN_AUTORIZACION_TOPE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Este anticipo no está pendiente de autorización de sobretope (Estado actual: '{anticipo.estado.value}').",
+        )
+
+    anticipo.autorizado_tope = False
+    anticipo.fecha_autorizacion_tope = datetime.now()
+    anticipo.motivo_rechazo_tope = payload.motivo
+    anticipo.estado = models.EstadoAnticipo.RECHAZADO
+
+    # Marcar pasos como en espera
+    for p in anticipo.progreso_pasos:
+        p.estado = "en_espera"
+
+    db.commit()
+    db.refresh(anticipo)
+
+    # Notificar al solicitante
+    if anticipo.email_solicitante:
+        nombre_autorizador = payload.autorizador_nombre or anticipo.autorizador_tope_nombre or "Autorizador de Sobretope"
+        try:
+            await mailer.notificar_rechazo_sobretope(
+                destinatario=anticipo.email_solicitante,
+                solicitante_nombre=anticipo.nombre,
+                anticipo_id=anticipo.id,
+                autorizador_nombre=nombre_autorizador,
+                valor=float(anticipo.valor),
+                monto_tope=float(anticipo.monto_tope_aplicado or 1500000),
+                motivo_rechazo=payload.motivo,
+            )
+        except Exception as e:
+            logger.error(f"Error enviando correo de rechazo de sobretope al solicitante: {e}")
 
     return anticipo
 

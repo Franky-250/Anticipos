@@ -5481,3 +5481,757 @@ tbody tr:hover {
   }
 }
 
+/* ====================================================================
+   MÓDULO DE GESTIÓN DE ACCESOS Y ROLES
+   ==================================================================== */
+
+.btn-asignar-nuevo-rol {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-asignar-nuevo-rol:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.tarjeta-tabla-accesos {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-top: 1.5rem;
+}
+
+.tabla-accesos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.tabla-accesos th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tabla-accesos td {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: #334155;
+}
+
+.tabla-accesos tr:hover {
+  background: #f8fafc;
+}
+
+.tabla-accesos tr.fila-inactiva {
+  opacity: 0.6;
+  background: #fafafa;
+}
+
+.usuario-celda-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usuario-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.usuario-datos {
+  display: flex;
+  flex-direction: column;
+}
+
+.usuario-datos strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.usuario-cedula {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.correo-txt {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.badge-admin-ppal {
+  display: inline-block;
+  margin-left: 0.5rem;
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.cargo-txt {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.badge-rol-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-estado-activo {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+}
+
+.badge-estado-activo.activo {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.badge-estado-activo.inactivo {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.acciones-usuario-flex {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-editar-rol-sm {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-editar-rol-sm:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-eliminar-rol-sm {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-eliminar-rol-sm:hover {
+  background: #fee2e2;
+}
+
+/* Selector Visual de Roles en Modal */
+.catalogo-roles-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.tarjeta-rol-opcion {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: all 0.15s ease;
+}
+
+.tarjeta-rol-opcion:hover {
+  border-color: #93c5fd;
+  background: #f0f9ff;
+}
+
+.tarjeta-rol-opcion.seleccionado {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.tarjeta-rol-opcion.bloqueado {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
+.rol-opcion-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.rol-opcion-header strong {
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.rol-icono {
+  font-size: 1.1rem;
+}
+
+.rol-desc {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.checkbox-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.checkbox-toggle-label input {
+  width: 18px;
+  height: 18px;
+  accent-color: #4f46e5;
+}
+
+/* Pantalla de Acceso Restringido */
+.accesos-restringido-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 2rem;
+}
+
+.tarjeta-restringido {
+  background: #ffffff;
+  border: 1.5px solid #fecaca;
+  border-radius: 16px;
+  padding: 2.5rem;
+  max-width: 520px;
+  text-align: center;
+  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.1);
+}
+
+.icono-restringido {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.tarjeta-restringido h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #991b1b;
+  margin-bottom: 0.75rem;
+}
+
+.tarjeta-restringido p {
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.info-sesion-actual {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: #7f1d1d;
+  margin-bottom: 1.25rem;
+}
+
+.nota-restringido {
+  font-size: 0.8rem !important;
+  color: #64748b !important;
+  margin: 0 !important;
+}
+
+/* Badges en Sidebar y Header */
+.sidebar-profile-name-row,
+.header-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sidebar-badge-admin,
+.header-badge-admin {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sidebar-badge-rol,
+.header-badge-rol {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   CONFIGURACIÓN DE TOPES & SOBRETOPE
+   ========================================================================== */
+
+.topes-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+.topes-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tarjeta-config-seccion {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.tarjeta-config-seccion h3 {
+  margin: 0 0 0.4rem 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seccion-desc {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.form-grid-2cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 800px) {
+  .form-grid-2cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tarjeta-config-seccion .campo-form-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tarjeta-config-seccion .campo-form-modal label {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.input-monto-wrapper {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 0.85rem;
+  height: 46px;
+  transition: all 0.2s ease;
+}
+
+.input-monto-wrapper:focus-within {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.input-monto-simbolo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 0.4rem;
+}
+
+.input-monto-wrapper input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: transparent;
+}
+
+.tarjeta-config-seccion input[type="text"]:not(.input-monto-wrapper input) {
+  width: 100%;
+  height: 46px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 0.85rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.tarjeta-config-seccion input[type="text"]:focus:not(.input-monto-wrapper input) {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.ayuda-input-txt {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.ayuda-input-txt strong {
+  color: #4f46e5;
+}
+
+.seccion-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.badge-contador-autorizadores {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Barra para añadir autorizador */
+.agregar-autorizador-sobretope-bar {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.select-wrap-autorizador {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-add-autorizador {
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  height: 44px;
+  padding: 0 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-add-autorizador:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn-add-autorizador:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-add-autorizador:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #94a3b8;
+}
+
+/* Grid de Tarjetas de Autorizadores */
+.grid-autorizadores-sobretope {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.card-autorizador-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.card-autorizador-item:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.avatar-autorizador-item {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.info-autorizador-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.info-autorizador-item strong {
+  font-size: 0.9rem;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cargo-autorizador {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-autorizador {
+  font-size: 0.74rem;
+  color: #4f46e5;
+  margin-top: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-quitar-autorizador {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-quitar-autorizador:hover {
+  background: #dc2626;
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+/* Acciones del Formulario */
+.topes-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.btn-guardar-topes {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1.8rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-guardar-topes:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4);
+}
+
+.btn-guardar-topes:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Alerta de Sobretope en Solicitud Form */
+.alerta-sobretope-form {
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 12px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.alerta-sobretope-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.alerta-sobretope-icono {
+  font-size: 1.5rem;
+}
+
+.alerta-sobretope-header strong {
+  color: #92400e;
+  font-size: 0.95rem;
+  display: block;
+}
+
+.alerta-sobretope-header p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.84rem;
+  color: #78350f;
+  line-height: 1.4;
+}
+
+.alerta-sobretope-selector label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 0.35rem;
+}
+
+/* Estados y Pills */
+.pill-en_autorizacion_tope,
+.estado-en_autorizacion_tope {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+.pill-en_espera,
+.estado-en_espera {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+
+.aprobacion-card-item.estado-en_autorizacion_tope {
+  border-left: 4px solid #f59e0b;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+

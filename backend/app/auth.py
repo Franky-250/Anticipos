@@ -66,14 +66,45 @@ async def verificar_token_pandora(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from .database import get_db
+from . import models
+
+
 @router.post("/verify-sso")
-async def api_verify_sso(payload: VerifyTokenRequest):
+async def api_verify_sso(
+    payload: VerifyTokenRequest,
+    db: Session = Depends(get_db)
+):
     """
-    Endpoint para que el frontend valide el token capturado por postMessage desde Pandora.
+    Endpoint para que el frontend valide el token capturado por postMessage desde Pandora
+    y resuelva el rol administrativo o de acceso en la base de datos local.
     """
     user_data = await verificar_token_pandora(payload.token)
     if not user_data:
         raise HTTPException(status_code=401, detail="Token SSO inválido o expirado.")
+
+    user_email = (user_data.get("email") or "").strip().lower()
+    
+    # 1. Regla raíz: jheyson.mena@pcmejia.com.co es siempre Administrador
+    if user_email == "jheyson.mena@pcmejia.com.co":
+        rol_final = "ADMINISTRADOR"
+    else:
+        # 2. Consultar rol en la base de datos local
+        usuario_db = (
+            db.query(models.UsuarioRol)
+            .filter(func.lower(models.UsuarioRol.email) == user_email, models.UsuarioRol.activo == True)
+            .first()
+        )
+        if usuario_db and usuario_db.rol:
+            rol_final = usuario_db.rol.upper()
+        else:
+            rol_final = "SOLICITANTE"
+
+    user_data["rol"] = rol_final
+    user_data["role"] = rol_final
+    user_data["is_admin"] = (rol_final == "ADMINISTRADOR")
     
     return {
         "valid": True,

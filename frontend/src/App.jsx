@@ -8,6 +8,8 @@ import Estados from "./pages/Estados";
 import Aprobaciones from "./pages/Aprobaciones";
 import Recaudo from "./pages/Recaudo";
 import Colaboradores from "./pages/Colaboradores";
+import Accesos from "./pages/Accesos";
+import Topes from "./pages/Topes";
 import NotFound404 from "./pages/NotFound404";
 import "./App.css";
 
@@ -42,6 +44,8 @@ function AppContent() {
               <Route path="/aprobaciones" element={<Aprobaciones />} />
               <Route path="/colaboradores" element={<Colaboradores />} />
               <Route path="/recaudo" element={<Recaudo />} />
+              <Route path="/accesos" element={<Accesos />} />
+              <Route path="/topes" element={<Topes />} />
               <Route path="*" element={<NotFound404 />} />
             </Routes>
           </main>

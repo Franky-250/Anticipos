@@ -176,4 +176,110 @@ export async function verificarTokenSSO(token) {
   return res.json();
 }
 
+// ==========================================
+// GESTIÓN DE ACCESOS Y ROLES
+// ==========================================
+
+export async function listarCatalogoRoles() {
+  const res = await fetch(`${API_URL}/accesos/roles`);
+  if (!res.ok) throw new Error("No se pudo obtener el catálogo de roles");
+  return res.json();
+}
+
+export async function listarUsuariosRoles(q = "", rol = "") {
+  const params = new URLSearchParams();
+  if (q) params.append("q", q);
+  if (rol) params.append("rol", rol);
+  const url = `${API_URL}/accesos/usuarios?${params.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("No se pudo obtener la lista de usuarios con roles");
+  return res.json();
+}
+
+export async function asignarRolUsuario(datos) {
+  const res = await fetch(`${API_URL}/accesos/usuarios`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo asignar el rol al usuario");
+  }
+  return res.json();
+}
+
+export async function actualizarRolUsuario(usuarioId, datos) {
+  const res = await fetch(`${API_URL}/accesos/usuarios/${usuarioId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo actualizar el rol del usuario");
+  }
+  return res.json();
+}
+
+export async function eliminarRolUsuario(usuarioId) {
+  const res = await fetch(`${API_URL}/accesos/usuarios/${usuarioId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo eliminar el rol del usuario");
+  }
+  return res.json();
+}
+
+// ==========================================
+// CONFIGURACIÓN DE TOPES Y SOBRETOPE
+// ==========================================
+
+export async function obtenerConfiguracionTope() {
+  const res = await fetch(`${API_URL}/topes/configuracion`);
+  if (!res.ok) throw new Error("No se pudo obtener la configuración de topes");
+  return res.json();
+}
+
+export async function actualizarConfiguracionTope(datos) {
+  const res = await fetch(`${API_URL}/topes/configuracion`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo actualizar la configuración de topes");
+  }
+  return res.json();
+}
+
+export async function aprobarSobretopeAnticipo(anticipoId, datos = {}) {
+  const res = await fetch(`${API_URL}/anticipos/${anticipoId}/aprobar-sobretope`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo autorizar el sobretope del anticipo");
+  }
+  return res.json();
+}
+
+export async function rechazarSobretopeAnticipo(anticipoId, datos = {}) {
+  const res = await fetch(`${API_URL}/anticipos/${anticipoId}/rechazar-sobretope`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => null);
+    throw new Error(error?.detail ?? "No se pudo rechazar el sobretope del anticipo");
+  }
+  return res.json();
+}
+
 
