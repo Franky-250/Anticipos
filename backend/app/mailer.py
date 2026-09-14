@@ -234,7 +234,7 @@ async def notificar_aprobador_turno(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía &middot; Correo generado automáticamente por Ecosistema Pandora
+                Sistema de Anticipos &middot; PCMejia &middot; Correo generado automáticamente por Ecosistema Pandora
             </div>
         </div>
     </div>
@@ -304,7 +304,7 @@ async def notificar_radicacion_solicitante(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -379,7 +379,7 @@ async def notificar_avance_solicitante(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -445,7 +445,7 @@ async def notificar_aprobacion_final_solicitante(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -582,7 +582,7 @@ async def notificar_responsable_flujo_final(
                 </div>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía &middot; Ecosistema Pandora
+                Sistema de Anticipos &middot; PCMejia &middot; Ecosistema Pandora
             </div>
         </div>
     </div>
@@ -649,7 +649,7 @@ async def notificar_rechazo(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -744,7 +744,7 @@ async def notificar_solicitud_sobretope(
                 </div>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -807,7 +807,7 @@ async def notificar_rechazo_sobretope(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>
@@ -869,7 +869,7 @@ async def notificar_aprobacion_sobretope_solicitante(
                 </p>
             </div>
             <div class="footer">
-                Sistema de Anticipos &middot; PCM Mejía
+                Sistema de Anticipos &middot; PCMejia
             </div>
         </div>
     </div>

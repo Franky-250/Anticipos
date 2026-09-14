@@ -52,7 +52,7 @@ export default function NotFound404() {
         </div>
 
         <div className="footer-404-marca">
-          <span>Ecosistema Corporativo PCM Mejía &middot; Pandora SSO</span>
+          <span>Ecosistema Corporativo PCMejia &middot; Pandora SSO</span>
         </div>
       </div>
 
